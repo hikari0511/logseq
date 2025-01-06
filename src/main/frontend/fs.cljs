@@ -127,7 +127,7 @@
   [repo old-path new-path]
   (let [new-path (gp-util/path-normalize new-path)]
     (cond
-                                        ; See https://github.com/isomorphic-git/lightning-fs/issues/41
+      ; See https://github.com/isomorphic-git/lightning-fs/issues/41
       (= old-path new-path)
       (p/resolved nil)
 
@@ -136,6 +136,22 @@
             old-fpath (path/path-join repo-dir old-path)
             new-fpath (path/path-join repo-dir new-path)]
         (protocol/rename! (get-fs old-fpath) repo old-fpath new-fpath)))))
+
+(defn stat
+  ([fpath]
+   (protocol/stat (get-fs fpath) fpath))
+  ([dir path]
+   (let [fpath (path/path-join dir path)]
+     (protocol/stat (get-fs dir) fpath))))
+
+(defn mkdir-if-not-exists
+  [dir]
+  (when dir
+    (util/p-handle
+     (stat dir)
+     (fn [_stat])
+     (fn [_error]
+       (mkdir-recur! dir)))))
 
 (defn copy!
   "Only used by Logseq Sync"
@@ -149,15 +165,13 @@
           (map #(if (or (util/electron?) (mobile-util/native-platform?))
                   %
                   (str (config/get-repo-dir repo) "/" %))
-               [old-path new-path])]
-      (protocol/copy! (get-fs old-path) repo old-path new-path))))
+               [old-path new-path])
+          new-dir (path/dirname new-path)]
+      (p/do!
+       (mkdir-if-not-exists new-dir)
+       (protocol/copy! (get-fs old-path) repo old-path new-path)))))
 
-(defn stat
-  ([fpath]
-   (protocol/stat (get-fs fpath) fpath))
-  ([dir path]
-   (let [fpath (path/path-join dir path)]
-     (protocol/stat (get-fs dir) fpath))))
+
 
 (defn open-dir
   [dir]
@@ -173,7 +187,7 @@
 
 (defn get-files
   "List all files in the directory, recursively.
-   
+
    Wrap as {:path string :files []}, using relative path"
   [dir]
   (let [fs-record (get-native-backend)]
@@ -191,15 +205,6 @@
 (defn unwatch-dir!
   [dir]
   (protocol/unwatch-dir! (get-fs dir) dir))
-
-(defn mkdir-if-not-exists
-  [dir]
-  (when dir
-    (util/p-handle
-     (stat dir)
-     (fn [_stat])
-     (fn [_error]
-       (mkdir! dir)))))
 
 ;; FIXME: counterintuitive return value
 (defn create-if-not-exists

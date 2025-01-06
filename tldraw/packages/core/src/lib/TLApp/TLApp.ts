@@ -15,7 +15,7 @@ import type {
   TLSubscriptionEventInfo,
   TLSubscriptionEventName,
 } from '../../types'
-import { AlignType, DistributeType } from '../../types'
+import { AlignType, DistributeType, Geometry } from '../../types'
 import { BoundsUtils, createNewLineBinding, dedupe, isNonNullable, uniqueId } from '../../utils'
 import type { TLShape, TLShapeConstructor, TLShapeModel } from '../shapes'
 import { TLApi } from '../TLApi'
@@ -837,6 +837,21 @@ export class TLApp<
     )
   }
 
+  @computed get showCloneHandles() {
+    const { selectedShapesArray } = this
+    return (
+      this.isInAny(
+        'select.idle',
+        'select.hoveringSelectionHandle',
+        'select.pointingShape',
+        'select.pointingSelectedShape',
+      ) &&
+      selectedShapesArray.length === 1 &&
+      Object.values(Geometry).some((geometry: string) => geometry === this.selectedShapesArray[0].type) &&
+      !this.readOnly
+    )
+  }
+
   /* ------------------ Shape Classes ----------------- */
 
   Shapes = new Map<string, TLShapeConstructor<S>>()
@@ -937,7 +952,7 @@ export class TLApp<
 
     if ('clientX' in e) {
       this.inputs.onPointerDown(
-        [...this.viewport.getPagePoint([e.clientX, e.clientY]), 0.5],
+        [...this.viewport.getPagePoint([e.clientX, e.clientY]), e.pressure],
         e as K['pointer']
       )
     }
@@ -953,7 +968,7 @@ export class TLApp<
 
     if ('clientX' in e) {
       this.inputs.onPointerUp(
-        [...this.viewport.getPagePoint([e.clientX, e.clientY]), 0.5],
+        [...this.viewport.getPagePoint([e.clientX, e.clientY]), e.pressure],
         e as K['pointer']
       )
     }
@@ -961,7 +976,7 @@ export class TLApp<
 
   readonly onPointerMove: TLEvents<S, K>['pointer'] = (info, e) => {
     if ('clientX' in e) {
-      this.inputs.onPointerMove([...this.viewport.getPagePoint([e.clientX, e.clientY]), 0.5], e)
+      this.inputs.onPointerMove([...this.viewport.getPagePoint([e.clientX, e.clientY]), e.pressure], e)
     }
   }
 

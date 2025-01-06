@@ -56,7 +56,7 @@
 (defn resolve-hls-layer!
   [^js viewer page]
   (when-let [^js text-layer (.. viewer (getPageView (dec page)) -textLayer)]
-    (let [cnt (.-textLayerDiv text-layer)
+    (let [cnt (.-div text-layer)
           cls "extensions__pdf-hls-layer"
           doc js/document
           layer (.querySelector cnt (str "." cls))]
@@ -145,7 +145,8 @@
         ^js cnt-offset (.getBoundingClientRect page-cnt)]
 
     (when (seq rge-rects)
-      (let [rects (for [rect rge-rects]
+      (let [rects (for [rect rge-rects
+                        :when (and rect (not (zero? (.-width rect))) (not (zero? (.-height rect))))]
                     {:top    (- (+ (.-top rect) (.-scrollTop page-cnt)) (.-top cnt-offset))
                      :left   (- (+ (.-left rect) (.-scrollLeft page-cnt)) (.-left cnt-offset))
                      :width  (.-width rect)

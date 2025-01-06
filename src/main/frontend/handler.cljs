@@ -44,18 +44,18 @@
             [promesa.core :as p]
             [frontend.mobile.core :as mobile]))
 
-(defn set-global-error-notification!
+(defn- set-global-error-notification!
   []
   (set! js/window.onerror
         (fn [message, _source, _lineno, _colno, error]
           (when-not (error/ignored? message)
-            (log/error :exception error)
+            (js/console.error message)
+            (log/error :exception error)))))
             ;; (notification/show!
             ;;  (str "message=" message "\nsource=" source "\nlineno=" lineno "\ncolno=" colno "\nerror=" error)
             ;;  :error
             ;;  ;; Don't auto-hide
             ;;  false)
-            ))))
 
 
 (defn- watch-for-date!
@@ -189,6 +189,8 @@
   (state/set-component! :block/linked-references reference/block-linked-references)
   (state/set-component! :whiteboard/tldraw-preview whiteboard/tldraw-preview)
   (state/set-component! :block/single-block block/single-block-cp)
+  (state/set-component! :block/container block/block-container)
+  (state/set-component! :block/embed block/block-embed)
   (state/set-component! :editor/box editor/box)
   (command-palette/register-global-shortcut-commands))
 
@@ -197,9 +199,13 @@
 (defn start!
   [render]
   (set-global-error-notification!)
+
+  (set! js/window.onhashchange #(state/hide-custom-context-menu!)) ;; close context menu when page navs
   (register-components-fns!)
   (user-handler/restore-tokens-from-localstorage)
   (state/set-db-restoring! true)
+  (when (util/electron?)
+    (el/listen!))
   (render)
   (i18n/start)
   (instrument/init)
@@ -221,11 +227,10 @@
      (mobile/mobile-preinit))
    (-> (p/let [repos (get-repos)
                _ (state/set-repos! repos)
+               _ (mobile-util/hide-splash) ;; hide splash as early as ui is stable
                _ (restore-and-setup! repos)]
          (when (mobile-util/native-platform?)
-           (p/do!
-            (mobile-util/hide-splash)
-            (state/restore-mobile-theme!))))
+           (state/restore-mobile-theme!)))
        (p/catch (fn [e]
                   (js/console.error "Error while restoring repos: " e)))
        (p/finally (fn []
@@ -237,8 +242,6 @@
 
    (when config/dev?
      (enable-datalog-console))
-   (when (util/electron?)
-     (el/listen!))
    (persist-var/load-vars)
    (js/setTimeout instrument! (* 60 1000))))
 

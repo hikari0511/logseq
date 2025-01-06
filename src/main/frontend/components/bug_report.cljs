@@ -73,7 +73,7 @@
          (ui/button (t :bug-report/inspector-page-btn-copy) :on-click #(copy-result-to-clipboard! (js/JSON.stringify (clj->js result) nil 2)))]
         [:div.flex.justify-between.items-center.mt-2
          [:div (t :bug-report/inspector-page-desc-create-issue)]
-         (ui/button (t :bug-report/inspector-page-btn-create-issue) :href header/bug-report-url)]
+         (ui/button (t :bug-report/inspector-page-btn-create-issue) :href (header/bug-report-url))]
         [:div.flex.justify-between.items-center.mt-2
          [:div (t :bug-report/inspector-page-tip)]
          (ui/button (t :bug-report/inspector-page-btn-back) :on-click reset-step!)]
@@ -84,8 +84,10 @@
   [route-match]
   (let [name (get-in route-match [:parameters :path :tool])]
     [:div.flex.flex-col ;; container
-     [:h1.text-2xl.mx-auto.mb-4 (ui/icon "clipboard") " " (-> name (string/replace #"-" " ") (string/capitalize))]
-     (cond ;; TODO any fallback?
+     (cond
+       (= name "clipboard-data-inspector")
+       [:h1.text-2xl.mx-auto.mb-4 (ui/icon "clipboard") " " (-> (t :bug-report/clipboard-inspector-title) (string/capitalize))])
+     (cond
        (= name "clipboard-data-inspector")
        (clipboard-data-inspector))]))
 
@@ -116,4 +118,4 @@
     [:div.flex.flex-col
      [:h1.text-2xl (t :bug-report/section-issues-title)]
      [:div.opacity-60 (t :bug-report/section-issues-desc)]
-     (report-item-button (t :bug-report/section-issues-btn-title) (t :bug-report/section-issues-btn-desc) "message-report" {:on-click #(util/open-url header/bug-report-url)})]]])
+     (report-item-button (t :bug-report/section-issues-btn-title) (t :bug-report/section-issues-btn-desc) "message-report" {:on-click #(util/open-url (header/bug-report-url))})]]])

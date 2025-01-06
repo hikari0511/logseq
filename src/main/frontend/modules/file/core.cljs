@@ -32,7 +32,7 @@
     content))
 
 (defn transform-content
-  [{:block/keys [collapsed? format pre-block? unordered content left page parent properties] :as b} level {:keys [heading-to-list?]}]
+  [{:block/keys [collapsed? format pre-block? content left page parent properties] :as b} level {:keys [heading-to-list?]}]
   (let [block-ref-not-saved? (and (seq (:block/_refs (db/entity (:db/id b))))
                                   (not (string/includes? content (str (:block/uuid b)))))
         heading (:heading properties)
@@ -48,9 +48,10 @@
                     (str content "\n"))
 
                   :else
-                  (let [markdown-top-heading? (and markdown?
-                                                   (= parent page)
-                                                   (not unordered)
+                  (let [
+                        ;; first block is a heading, Markdown users prefer to remove the `-` before the content
+                        markdown-top-heading? (and markdown?
+                                                   (= parent page left)
                                                    heading)
                         [prefix spaces-tabs]
                         (cond
@@ -122,7 +123,8 @@
           format (if whiteboard-page? "edn" format)
           journal-page? (date/valid-journal-title? title)
           journal-title (date/normalize-journal-title title)
-          filename (if (and journal-page? (not (string/blank? journal-title)))
+          journal-page? (and journal-page? (not (string/blank? journal-title)))
+          filename (if journal-page?
                      (date/date->file-name journal-title)
                      (-> (or (:block/original-name page-block) (:block/name page-block))
                          (fs-util/file-name-sanity)))

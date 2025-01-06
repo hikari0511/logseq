@@ -83,7 +83,7 @@
     (-> (ipc/ipc "mkdir" dir)
         (p/then (fn [_] (js/console.log (str "Directory created: " dir))))
         (p/catch (fn [error]
-                   (when (not= (.-code error) "EEXIST")
+                   (when-not (string/includes? (str error) "EEXIST")
                      (js/console.error (str "Error creating directory: " dir) error))))))
 
   (mkdir-recur! [_this dir]
@@ -118,7 +118,9 @@
 
   (rename! [_this _repo old-path new-path]
     (ipc/ipc "rename" old-path new-path))
-
+  ;; copy with overwrite, without confirmation
+  (copy! [_this repo old-path new-path]
+    (ipc/ipc "copyFile" repo old-path new-path))
   (stat [_this fpath]
     (-> (ipc/ipc "stat" fpath)
         (p/then bean/->clj)))

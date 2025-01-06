@@ -16,7 +16,8 @@
             [cljs-time.coerce :as tc]
             [cljs-time.core :as t]
             [frontend.storage :as storage]
-            [lambdaisland.glogi :as log]))
+            [lambdaisland.glogi :as log]
+            [logseq.common.path :as path]))
 
 (def *beta-unavailable? (volatile! false))
 
@@ -90,14 +91,19 @@
 
 (defn <list-graphs
   []
-  (go (:Graphs (<! (sync/<list-remote-graphs sync/remoteapi)))))
+  (go
+    (let [r (<! (sync/<list-remote-graphs sync/remoteapi))]
+      (if (instance? ExceptionInfo r)
+        r
+        (:Graphs r)))))
 
 (defn load-session-graphs
   []
   (when-not (state/sub [:file-sync/remote-graphs :loading])
     (go (state/set-state! [:file-sync/remote-graphs :loading] true)
-        (let [graphs (<! (<list-graphs))]
-          (state/set-state! :file-sync/remote-graphs {:loading false :graphs graphs})))))
+        (let [graphs-or-exp (<! (<list-graphs))]
+          (when-not (instance? ExceptionInfo graphs-or-exp)
+            (state/set-state! :file-sync/remote-graphs {:loading false :graphs graphs-or-exp}))))))
 
 (defn reset-session-graphs
   []
@@ -130,19 +136,16 @@
                                 [:div "Downloaded version file at: "]
                                 [:div key]] :success false)))
        (when-not (instance? ExceptionInfo r)
-         (node-path/join "logseq" "version-files" key))))))
+         (path/path-join "logseq" "version-files" key))))))
 
 (defn- <list-file-local-versions
   [page]
   (go
     (when-let [path (-> page :block/file :file/path)]
-      (let [base-path           (config/get-repo-dir (state/get-current-repo))
-            rel-path            (string/replace-first path base-path "")
-            version-files-dir   (->> (node-path/join "logseq/version-files/local" rel-path)
-                                     node-path/parse
-                                     (#(js->clj % :keywordize-keys true))
-                                     ((juxt :dir :name))
-                                     (apply node-path/join base-path))
+      (let [base-path          (config/get-repo-dir (state/get-current-repo))
+            rel-path           (string/replace-first path base-path "")
+            file-stem          (path/file-stem rel-path)
+            version-files-dir  (path/path-join base-path "logseq/version-files/local" (path/dirname rel-path) file-stem)
             version-file-paths (<! (p->c (fs/readdir version-files-dir :path-only? true)))]
         (when-not (instance? ExceptionInfo version-file-paths)
           (when (seq version-file-paths)
@@ -155,7 +158,9 @@
                             (js->clj :keywordize-keys true)
                             :name
                             (#(tf/parse (tf/formatter "yyyy-MM-dd'T'HH_mm_ss.SSSZZ") %)))]
-                    {:create-time create-time :path path :relative-path (string/replace-first path base-path "")})
+                    {:create-time   create-time
+                     :path          path
+                     :relative-path (path/relative-path base-path path)})
                   (catch :default e
                     (log/error :page-history/parse-format-error e)
                     nil)))
@@ -254,3 +259,8 @@
   [value]
   (storage/set :logseq-sync-enabled value)
   (state/set-state! :feature/enable-sync? value))
+
+(defn set-sync-diff-merge-enabled!
+  [value]
+  (storage/set :logseq-sync-diff-merge-enabled value)
+  (state/set-state! :feature/enable-sync-diff-merge? value))

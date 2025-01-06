@@ -74,11 +74,23 @@ error if it detects an invalid query.
 
 ### Translations
 
-Our translations can be configured incorrectly. We can catch some of these
-mistakes [as noted here](./contributing-to-translations.md#fix-mistakes).
+We use [tongue](https://github.com/tonsky/tongue), a simple and effective
+library, for translations. We have a couple bb tasks for working with
+translations under `lang:` e.g. `bb lang:list`. See [the translator
+guide](./contributing-to-translations.md) for usage.
 
-Punctuation and delimiting characters (e.g. `:`, `:`, `?`) should be part of the translatable string.
-Those characters and their position may vary depending on the language.
+One useful task for reviewers (us) and contributors alike, is `bb
+lang:validate-translations` which catches [common
+mistakes](./contributing-to-translations.md#fix-mistakes)). When reviewing
+translations here are some things to keep in mind:
+
+* Punctuation and delimiting characters (e.g. `:`, `:`, `?`) should be part of
+  the translatable string. Those characters and their position may vary depending on the language.
+* Translations usually return strings but they can return hiccup vectors with a
+  fn translation. Hiccup vectors are needed when word order matters for a
+  translation and formatting is involved. See [this 3 word Turkish
+  example](https://github.com/logseq/logseq/commit/1d932f07c4a0aad44606da6df03a432fe8421480#r118971415).
+* Translations can be anonymous fns with arguments for interpolating strings. Fns should be simple and only include the following fns: `str`, `when`, `if` and `=`.
 
 ### Spell Checker
 
@@ -295,10 +307,21 @@ point out:
   ```sh
   # One time setup
   $ cd scripts && yarn install && cd -
-  # Build the export
+
+  # Build a release publishing app
   $ bb dev:publishing /path/to/graph-dir tmp/publish
-  # View the app in a browser
-  $ open tmp/publish/index.html
+
+  # OR build a dev publishing app that watches frontend changes
+  $ bb dev:publishing /path/to/graph-dir tmp/publish --dev
+
+  # View the publishing app in a browser
+  $ python3 -m http.server 8080 -d tmp/publish &; open http://localhost:8080
+
+  # Rebuild the publishing backend for dev/release.
+  # Handy when making backend changes in deps/publishing or
+  # to test a different graph
+  $ bb dev:publishing-backend /path/graph-dir tmp/publish
+
   ```
 
 There are also some tasks under `nbb:` which are useful for inspecting database
@@ -316,6 +339,14 @@ inspectors for block/page data and AST.
 Since the desktop app is built with Electron, a full set of Chromium developer
 tools is available under the menu `View > Toggle Developer Tools`. Handy tools
 include a JS console and HTML inspector.
+
+## Security Practices
+
+* Our builds should not include unverified, third-party resources as this opens
+  up the app to possibly harmful injections. If a third-party resource is
+  included, it should be verified against an official distributor. Use
+  https://github.com/logseq/logseq/pull/9712 as an example to include a third
+  party resource and not the examples under resources/js/.
 
 ## FAQ
 

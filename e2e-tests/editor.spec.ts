@@ -14,6 +14,12 @@ import { dispatch_kb_events } from './util/keyboard-events'
 import * as kb_events from './util/keyboard-events'
 
 test('hashtag and quare brackets in same line #4178', async ({ page }) => {
+  try {
+    await page.waitForSelector('.notification-clear', { timeout: 10 })
+    page.click('.notification-clear')
+  } catch (error) {
+  }
+
   await createRandomPage(page)
 
   await page.type('textarea >> nth=0', '#foo bar')
@@ -817,4 +823,45 @@ test.describe('Auto-pair symbols only with text selection', () => {
       expect(selection).toBe('Lorem')
     })
   }
+})
+
+test('copy blocks should remove all ref-related values', async ({ page, block }) => {
+  await createRandomPage(page)
+
+  await block.mustFill('test')
+  await page.keyboard.press(modKey + '+c', { delay: 10 })
+  await block.clickNext()
+  await page.keyboard.press(modKey + '+v')
+  await expect(page.locator('.open-block-ref-link')).toHaveCount(1)
+
+  await page.keyboard.press('ArrowUp', { delay: 10 })
+  await page.waitForTimeout(100)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.ls-block.selected')).toHaveCount(1)
+  await page.keyboard.press(modKey + '+c', { delay: 10 })
+  await block.clickNext()
+  await page.keyboard.press(modKey + '+v', { delay: 10 })
+  await block.clickNext() // let 3rd block leave editing state
+  await expect(page.locator('.open-block-ref-link')).toHaveCount(1)
+})
+
+test('undo cut block should recover refs', async ({ page, block }) => {
+  await createRandomPage(page)
+
+  await block.mustFill('test')
+  await page.keyboard.press(modKey + '+c', { delay: 10 })
+  await block.clickNext()
+  await page.keyboard.press(modKey + '+v')
+  await expect(page.locator('.open-block-ref-link')).toHaveCount(1)
+
+  await page.keyboard.press('ArrowUp', { delay: 10 })
+  await page.waitForTimeout(100)
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.ls-block.selected')).toHaveCount(1)
+  await page.keyboard.press(modKey + '+x', { delay: 10 })
+  await expect(page.locator('.ls-block')).toHaveCount(1)
+  await page.keyboard.press(modKey + '+z')
+  await page.waitForTimeout(100)
+  await expect(page.locator('.ls-block')).toHaveCount(2)
+  await expect(page.locator('.open-block-ref-link')).toHaveCount(1)
 })

@@ -41,11 +41,23 @@
     transform: translateY(calc(-100% - 2rem));
   }
 
+  &[data-modal-name] {
+    @apply bg-popover border overflow-x-hidden overflow-y-auto rounded-lg py-1;
+  }
+
   &[data-modal-name="commands"],
   &[data-modal-name="select-code-block-mode"] {
     @screen sm {
       width: 380px !important;
       max-width: 90vw !important;
+    }
+  }
+
+  &[data-modal-name="date-picker"] {
+    @apply py-0;
+
+    .rc-datepicker {
+      @apply my-0;
     }
   }
 }
@@ -77,10 +89,10 @@ pre {
 }
 
 #time-repeater {
-  width: 135px;
+  min-width: 300px;
 
   @screen sm {
-    min-width: 300px;
+    width: 135px;
   }
 }
 
